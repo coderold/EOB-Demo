@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: fd0c7fe57c1f32b488dcfb8660e2ef2e
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 370650
+  packageName: URP Dynamic Weather System
+  packageVersion: 1.0
+  assetPath: Assets/DynamicWeatherSystem/Example/Scene WeatherSystem.unity
+  uploadId: 891376
