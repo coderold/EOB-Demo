@@ -4,7 +4,7 @@ using UnityEngine.AI;
 public class SkellyAI : MonoBehaviour 
 {
     public Transform player;
-    public float stopDistance = 3f;
+    public float stopDistance = 4f;
 
     public float attackCooldown = 2.0f; // Seconds between attacks
     private float nextAttackTime = 0;
