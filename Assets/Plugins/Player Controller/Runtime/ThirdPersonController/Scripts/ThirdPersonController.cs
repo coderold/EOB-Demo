@@ -109,7 +109,6 @@ namespace StarterAssets
         private int _animIDDash;
         private int _animIDAttack;
 
-
 #if ENABLE_INPUT_SYSTEM
         private PlayerInput _playerInput;
 #endif
@@ -129,11 +128,10 @@ namespace StarterAssets
 #if ENABLE_INPUT_SYSTEM
                 return _playerInput.currentControlScheme == "KeyboardMouse";
 #else
-				return false;
+                return false;
 #endif
             }
         }
-
 
         private void Awake()
         {
@@ -154,7 +152,7 @@ namespace StarterAssets
 #if ENABLE_INPUT_SYSTEM
             _playerInput = GetComponent<PlayerInput>();
 #else
-			Debug.LogError( "Starter Assets package is missing dependencies. Please use Tools/Starter Assets/Reinstall Dependencies to fix it");
+            Debug.LogError( "Starter Assets package is missing dependencies. Please use Tools/Starter Assets/Reinstall Dependencies to fix it");
 #endif
 
             AssignAnimationIDs();
@@ -168,33 +166,31 @@ namespace StarterAssets
         {
             _hasAnimator = TryGetComponent(out _animator);
 
-            JumpAndGravity();
             GroundedCheck();
+            JumpAndGravity();
 
-            // Check for dash input
-            if (_input.dash && !_isSliding && Grounded)
+            // 1. Process Attack Input Action
+            if (_input.attack && !_isAttacking && !_isSliding && Grounded)
+            {
+                StartCoroutine(AttackRoutine());
+            }
+
+            // 2. Process Dash Input Action
+            if (_input.dash && !_isSliding && !_isAttacking && Grounded)
             {
                 StartCoroutine(SlideRoutine());
                 _input.dash = false; // Reset input
             }
 
-            // Only run normal Move if not sliding
-            if (!_isSliding)
-            {
-                Move();
-            }
-            Move();
-
-            // Attack
-            if (_input.attack && !_isAttacking && Grounded)
-            {
-                StartCoroutine(AttackRoutine());
-            }
-
-            // Modify your move check to include ! _isAttacking
+            // 3. Process Normal Movement ONLY if completely unhindered
             if (!_isSliding && !_isAttacking)
             {
                 Move();
+            }
+            else if (_isAttacking)
+            {
+                // If attacking, make sure gravity is still applied horizontally stationary
+                ApplyGravityOnly();
             }
         }
 
@@ -212,7 +208,6 @@ namespace StarterAssets
             _animIDMotionSpeed = Animator.StringToHash("MotionSpeed");
             _animIDDash = Animator.StringToHash("Dash");
             _animIDAttack = Animator.StringToHash("Attack");
-
         }
 
         private void GroundedCheck()
@@ -256,9 +251,6 @@ namespace StarterAssets
             // set target speed based on move speed, sprint speed and if sprint is pressed
             float targetSpeed = _input.sprint ? SprintSpeed : MoveSpeed;
 
-            // a simplistic acceleration and deceleration designed to be easy to remove, replace, or iterate upon
-
-            // note: Vector2's == operator uses approximation so is not floating point error prone, and is cheaper than magnitude
             // if there is no input, set the target speed to 0
             if (_input.move == Vector2.zero) targetSpeed = 0.0f;
 
@@ -272,8 +264,6 @@ namespace StarterAssets
             if (currentHorizontalSpeed < targetSpeed - speedOffset ||
                 currentHorizontalSpeed > targetSpeed + speedOffset)
             {
-                // creates curved result rather than a linear one giving a more organic speed change
-                // note T in Lerp is clamped, so we don't need to clamp our speed
                 _speed = Mathf.Lerp(currentHorizontalSpeed, targetSpeed * inputMagnitude,
                     Time.deltaTime * SpeedChangeRate);
 
@@ -291,8 +281,6 @@ namespace StarterAssets
             // normalise input direction
             Vector3 inputDirection = new Vector3(_input.move.x, 0.0f, _input.move.y).normalized;
 
-            // note: Vector2's != operator uses approximation so is not floating point error prone, and is cheaper than magnitude
-            // if there is a move input rotate player when the player is moving
             if (_input.move != Vector2.zero)
             {
                 _targetRotation = Mathf.Atan2(inputDirection.x, inputDirection.z) * Mathf.Rad2Deg +
@@ -303,7 +291,6 @@ namespace StarterAssets
                 // rotate to face input direction relative to camera position
                 transform.rotation = Quaternion.Euler(0.0f, rotation, 0.0f);
             }
-
 
             Vector3 targetDirection = Quaternion.Euler(0.0f, _targetRotation, 0.0f) * Vector3.forward;
 
@@ -317,6 +304,12 @@ namespace StarterAssets
                 _animator.SetFloat(_animIDSpeed, _animationBlend);
                 _animator.SetFloat(_animIDMotionSpeed, inputMagnitude);
             }
+        }
+
+        private void ApplyGravityOnly()
+        {
+            // Keeps the player attached to the ground and falling correctly without moving horizontally
+            _controller.Move(new Vector3(0.0f, _verticalVelocity, 0.0f) * Time.deltaTime);
         }
 
         private void JumpAndGravity()
@@ -342,10 +335,8 @@ namespace StarterAssets
                 // Jump
                 if (_input.jump && _jumpTimeoutDelta <= 0.0f)
                 {
-                    // the square root of H * -2 * G = how much velocity needed to reach desired height
                     _verticalVelocity = Mathf.Sqrt(JumpHeight * -2f * Gravity);
 
-                    // update animator if using character
                     if (_hasAnimator)
                     {
                         _animator.SetBool(_animIDJump, true);
@@ -370,18 +361,16 @@ namespace StarterAssets
                 }
                 else
                 {
-                    // update animator if using character
                     if (_hasAnimator)
                     {
                         _animator.SetBool(_animIDFreeFall, true);
                     }
                 }
 
-                // if we are not grounded, do not jump
                 _input.jump = false;
             }
 
-            // apply gravity over time if under terminal (multiply by delta time twice to linearly speed up over time)
+            // apply gravity over time
             if (_verticalVelocity < _terminalVelocity)
             {
                 _verticalVelocity += Gravity * Time.deltaTime;
@@ -403,7 +392,6 @@ namespace StarterAssets
             if (Grounded) Gizmos.color = transparentGreen;
             else Gizmos.color = transparentRed;
 
-            // when selected, draw a gizmo in the position of, and matching radius of, the grounded collider
             Gizmos.DrawSphere(
                 new Vector3(transform.position.x, transform.position.y - GroundedOffset, transform.position.z),
                 GroundedRadius);
@@ -429,49 +417,48 @@ namespace StarterAssets
             }
         }
 
-
         private System.Collections.IEnumerator SlideRoutine()
         {
-        _isSliding = true;
-        if (_hasAnimator) _animator.SetTrigger(_animIDDash);
+            _isSliding = true;
+            if (_hasAnimator) _animator.SetTrigger(_animIDDash);
 
-        // Optional: Shrink controller height to slide under things
-        float originalHeight = _controller.height;
-        Vector3 originalCenter = _controller.center;
-        _controller.height = 1.0f; 
-        _controller.center = new Vector3(0, 0.5f, 0);
+            float originalHeight = _controller.height;
+            Vector3 originalCenter = _controller.center;
+            _controller.height = 1.0f; 
+            _controller.center = new Vector3(0, 0.5f, 0);
 
-        float timer = 0f;
-        while (timer < SlideDuration)
-        {
-            // Smoothly slow down from SlideSpeed to SprintSpeed
-            float currentSlideSpeed = Mathf.Lerp(SlideSpeed, SprintSpeed, timer / SlideDuration);
-            
-            // Move in the direction the player was facing when they started the slide
-            Vector3 slideDirection = transform.forward;
-            
-            _controller.Move(slideDirection * (currentSlideSpeed * Time.deltaTime) +
-                            new Vector3(0.0f, _verticalVelocity, 0.0f) * Time.deltaTime);
+            float timer = 0f;
+            while (timer < SlideDuration)
+            {
+                float currentSlideSpeed = Mathf.Lerp(SlideSpeed, SprintSpeed, timer / SlideDuration);
+                Vector3 slideDirection = transform.forward;
+                
+                _controller.Move(slideDirection * (currentSlideSpeed * Time.deltaTime) +
+                                new Vector3(0.0f, _verticalVelocity, 0.0f) * Time.deltaTime);
 
-            timer += Time.deltaTime;
-            yield return null;
-        }
+                timer += Time.deltaTime;
+                yield return null;
+            }
 
-        // Reset Controller
-        _controller.height = originalHeight;
-        _controller.center = originalCenter;
-        _isSliding = false;
+            _controller.height = originalHeight;
+            _controller.center = originalCenter;
+            _isSliding = false;
         }
 
         private System.Collections.IEnumerator AttackRoutine()
         {
             _isAttacking = true;
-            _input.attack = false; // Reset input
+            _input.attack = false; // Clear input request right away
             
-            if (_hasAnimator) _animator.SetTrigger(_animIDAttack);
+            // Force values instantly to 0 so the Blend Tree jumps to Idle state during attack
+            _speed = 0f;
+            _animationBlend = 0f;
+            if (_hasAnimator)
+            {
+                _animator.SetFloat(_animIDSpeed, 0f);
+                _animator.SetTrigger(_animIDAttack);
+            }
 
-            // Briefly stop vertical velocity so they don't slide 
-            // if they attack right as they land
             _verticalVelocity = -2f; 
 
             yield return new WaitForSeconds(AttackDuration);
