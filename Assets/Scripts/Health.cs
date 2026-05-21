@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -9,7 +10,7 @@ public class Health : MonoBehaviour, IDamageable
 
     // Decoupled architecture: Fires an event so the HUD can listen to health changes
     public UnityEvent<int, int> OnHealthChanged; 
-    public UnityEvent OnDie;
+    public Action OnDie;
 
     private bool isDead = false;
 
@@ -41,13 +42,13 @@ public class Health : MonoBehaviour, IDamageable
         isDead = true;
         OnDie?.Invoke();
         Debug.Log($"{gameObject.name} has died.");
-        DropLoot();
-        Destroy(gameObject);
+        // DropLoot();
+        // Destroy(gameObject);
         
         // Handle loot drop logic here on Day 3
     }
 
-    private void DropLoot()
+    public void DropLoot()
     {
         Transform dropPoint = transform.Find("LootDropPoint");
 

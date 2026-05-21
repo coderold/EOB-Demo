@@ -50,15 +50,6 @@ TemporaryDependencyNodeTargetIdentifier=netstandard2.1
 /warnaserror+:NU1605
 
 [sourceFiles]
-Assets/Free Slash VFX/Demo/Scripts/
- AttackerController.cs
- CameraOrbit.cs
- ElementsShowCase.cs
- FPSCounter.cs
- ParticleAnimationEvent.cs
- PlayerInput.cs
- Projectile.cs
- SlashDecal.cs
 Assets/Scripts/
  Enemy/SkellyAI.cs
  Health.cs

@@ -261,8 +261,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   player: {fileID: 278600653}
-  stopDistance: 10
-  attackCooldown: 10
+  stopDistance: 1.8
+  attackCooldown: 5
 --- !u!195 &240310535
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -323,9 +323,6 @@ MonoBehaviour:
   maxHealth: 100
   lootPrefab: {fileID: 899484980}
   OnHealthChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  OnDie:
     m_PersistentCalls:
       m_Calls: []
 --- !u!136 &240310540
@@ -1871,9 +1868,6 @@ MonoBehaviour:
   maxHealth: 100
   lootPrefab: {fileID: 0}
   OnHealthChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  OnDie:
     m_PersistentCalls:
       m_Calls: []
 --- !u!114 &946158617
