@@ -6,9 +6,14 @@ public class Health : MonoBehaviour, IDamageable
 {
     [SerializeField] private int maxHealth = 100;
     [SerializeField] private GameObject lootPrefab;
+
+    [Header("UI Reference")]
+    [SerializeField] private PlayerHUDController hudController;
+
+    [Header("Enemy UI")]
+    [SerializeField] private WorldSpaceHealthBar enemyUI;
     private int currentHealth;
 
-    // Decoupled architecture: Fires an event so the HUD can listen to health changes
     public UnityEvent<int, int> OnHealthChanged; 
     public Action OnDie;
 
@@ -26,10 +31,20 @@ public class Health : MonoBehaviour, IDamageable
         currentHealth -= damage;
         currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
         
-        // Notify UI/HUD
+        // Notify UI/HUD for later implementation
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
 
         Debug.Log($"{gameObject.name} took {damage} damage! Current health: {currentHealth}");
+
+        if (enemyUI != null)
+        {
+            enemyUI.UpdateHealthUI(currentHealth, maxHealth);
+        }
+
+        if (hudController != null)
+        {
+            hudController.UpdateHealthUI(currentHealth, maxHealth);
+        }
 
         if (currentHealth <= 0)
         {
@@ -44,8 +59,6 @@ public class Health : MonoBehaviour, IDamageable
         Debug.Log($"{gameObject.name} has died.");
         // DropLoot();
         // Destroy(gameObject);
-        
-        // Handle loot drop logic here on Day 3
     }
 
     public void DropLoot()

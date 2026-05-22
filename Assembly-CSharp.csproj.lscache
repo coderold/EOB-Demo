@@ -54,13 +54,17 @@ Assets/Scripts/
  Enemy/SkellyAI.cs
  Health.cs
  IDamagable.cs
+ Items/
+  PickableItems.cs
+  RotateLoot.cs
  LootDrop.cs
  MeleeAttack.cs
  Player/
   Controls.cs
   PlayerController.cs
- PlayerVFXController.cs
+ SelfDestroy.cs
  Spawner.cs
+ VFXController.cs
 Temp/obj/Assembly-CSharp/.NETStandard,Version=v2.1.AssemblyAttributes.cs
 
 [metadataReferences]
