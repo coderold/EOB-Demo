@@ -6,7 +6,6 @@ public class SelfDestroy : MonoBehaviour
 
     void Start()
     {
-        // This is safe because 'gameObject' refers to the active clone in the scene, not the asset file!
         Destroy(gameObject, delay);
     }
 }
