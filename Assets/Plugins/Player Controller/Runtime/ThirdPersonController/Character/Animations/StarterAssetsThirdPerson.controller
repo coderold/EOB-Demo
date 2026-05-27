@@ -61,7 +61,7 @@ AnimatorStateMachine:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Base Layer
+  m_Name: 1
   m_ChildStates:
   - serializedVersion: 1
     m_State: {fileID: 6904719651407550685}
@@ -483,7 +483,7 @@ AnimatorController:
     m_Controller: {fileID: 9100000}
   m_AnimatorLayers:
   - serializedVersion: 5
-    m_Name: Base Layer
+    m_Name: 1
     m_StateMachine: {fileID: -5602963042399094863}
     m_Mask: {fileID: 0}
     m_Motions: []
@@ -863,8 +863,8 @@ AnimatorState:
   m_Motion: {fileID: 8571049798372811705}
   m_Tag: 
   m_SpeedParameter: MotionSpeed
-  m_MirrorParameter: 
-  m_CycleOffsetParameter: 
+  m_MirrorParameter: Jump
+  m_CycleOffsetParameter: Speed
   m_TimeParameter: Speed
 --- !u!1101 &7604687646627025577
 AnimatorStateTransition:

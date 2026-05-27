@@ -1,81 +1,70 @@
-using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class PlayerController : MonoBehaviour
 {
     public Animator anim;
-    private Controls controls;
-    private Vector3 velocity;
-    private Vector2 moveInput;
+    private Vector3 _velocity;
+    private Vector2 _moveInput;
 
-    [Header("Required Components")]
-    private CharacterController controller;
+    [Header("Required Components")] 
+    private CharacterController _controller;
+    private MeleeAttack _meleeAttack;
+    
+    [Header("Attack Settings")]
+    private int _comboStep = 0;
+    private float _lastAttackTime;
+    public float comboResetTime = 1.5f;
 
     [Header("Movement Settings")]
-    public float walkSpeed = 5f;
-    public float sprintSpeed = 8f;
-    private float currentSpeed;
-    private Vector3 moveDirection;
+    private bool _isWalking;
+    private const float _walkSpeed = 2.5f;
+    private const float _sprintSpeed = 4f;
+    private float _currentSpeed;
+    private Vector3 _moveDirection;
 
-    [Header("Grounded Check")]
-    public Transform groundCheck;
+    [Header("Grounded Check")] public Transform groundCheck;
     public float groundDistance = 0.2f;
     public LayerMask groundMask;
-    private bool isGrounded;
-    private float groundedTimer;
+    private bool _isGrounded;
+    private float _groundedTimer;
 
-    [Header("Jump Settings")]
-    public float jumpHeight = 2f;
-    private bool isJumping;
-    private bool canJump = true; // For jump cooldown
-
-    [Header("Dash Settings")]
+    [Header("Jump Settings")] public float jumpHeight = 2f;
+    private bool _isJumping;
+    private bool _canJump = true; 
+    
+    
+    [Header("Dash Settings")] 
     public float dashSpeed = 15f;
     public float dashDuration = 0.2f;
     public float dashCooldown = 1f;
-    private bool isDashing;
-    private bool canDash = true;
-    private float dashTimeLeft;
-    private float dashCooldownLeft;
+    private bool _isDashing;
+    private bool _canDash = true;
+    private float _dashTimeLeft;
+    private float _dashCooldownLeft;
 
-    [Header("Sprint Settings")]
-    private bool isSprinting;
+    [Header("Sprint Settings")] 
+    private bool _isSprinting;
 
-    void Awake()
+    private void Awake()
     {
-        controller = GetComponent<CharacterController>();
-        if (controller == null)
-        {
-            controller = gameObject.AddComponent<CharacterController>();
-            controller.height = 2f;
-            controller.radius = 0.5f;
-            controller.center = new Vector3(0, 1f, 0);
-        }
-
-        controls = new Controls();
-        controls.Player.Attack.performed += OnAttack;
-        controls.Player.Jump.performed += OnJump;
-        controls.Player.Dash.performed += OnDash;
-        controls.Player.Sprint.performed += OnSprintStart;
-        controls.Player.Sprint.canceled += OnSprintEnd;
-    }
-
-    void OnEnable()
-    {
-        controls.Player.Enable();
-    }
-
-    void OnDisable()
-    {
-        controls.Player.Disable();
-    }
-
-    void Update()
-    {
-        moveInput = controls.Player.Move.ReadValue<Vector2>();
+        _controller = GetComponent<CharacterController>();
+        _meleeAttack = GetComponent<MeleeAttack>();
         
-        if (isDashing)
+        if (_controller == null)
+        {
+            _controller = gameObject.AddComponent<CharacterController>();
+            _controller.height = 2f;
+            _controller.radius = 0.5f;
+            _controller.center = new Vector3(0, 1f, 0);
+        }
+        
+    }
+
+    private void Update()
+    {
+
+        if (_isDashing)
         {
             HandleDash();
             return;
@@ -83,21 +72,11 @@ public class PlayerController : MonoBehaviour
 
         CheckGrounded();
 
-        if (isGrounded && velocity.y < 0)
+        if (_isGrounded && _velocity.y < 0)
         {
-            anim.SetBool("Grounded", true);
-            anim.SetBool("FreeFall", false);
-            velocity.y = -2f;
-            isJumping = false;
-            groundedTimer = 0.1f;
-        }
-        else if (!isGrounded)
-        {
-            anim.SetBool("Grounded", false);
-            if (velocity.y < 0 && !isJumping)
-            {
-                anim.SetBool("FreeFall", true);
-            }
+            _velocity.y = -2f;
+            _isJumping = false;
+            _groundedTimer = 0.1f;
         }
 
         HandleMovement();
@@ -105,227 +84,213 @@ public class PlayerController : MonoBehaviour
         HandleSprint();
         ApplyGravity();
         MovePlayer();
-        UpdateAnimations();
 
-        if (!canDash)
+        if (!_canDash)
         {
-            dashCooldownLeft -= Time.deltaTime;
-            if (dashCooldownLeft <= 0) canDash = true;
+            _dashCooldownLeft -= Time.deltaTime;
+            if (_dashCooldownLeft <= 0) _canDash = true;
         }
     }
 
     private void CheckGrounded()
     {
-        isGrounded = controller.isGrounded;
-        
-        if (!isGrounded && groundCheck != null)
-        {
-            isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
-        }
-        
-        if (!isGrounded)
+        _isGrounded = _controller.isGrounded;
+
+        if (!_isGrounded && groundCheck)
+            _isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
+
+        if (!_isGrounded)
         {
             RaycastHit hit;
-            float raycastDistance = controller.height / 2 + 0.1f;
+            var raycastDistance = _controller.height / 2 + 0.1f;
             if (Physics.Raycast(transform.position, Vector3.down, out hit, raycastDistance, groundMask))
-            {
-                isGrounded = true;
-            }
+                _isGrounded = true;
         }
-        
-        if (groundedTimer > 0)
+
+        if (_groundedTimer > 0)
         {
-            groundedTimer -= Time.deltaTime;
-            if (groundedTimer > 0)
-            {
-                isGrounded = true;
-            }
+            _groundedTimer -= Time.deltaTime;
+            if (_groundedTimer > 0) _isGrounded = true;
         }
     }
+    
 
-    // ========== ANIMATION EVENT HANDLERS ==========
-    
-    // Called by jump landing animation
-    public void OnLand()
+    public void OnMove(InputAction.CallbackContext context)
     {
-        Debug.Log("Player landed on ground");
-        anim.SetBool("Grounded", true);
-        anim.SetBool("FreeFall", false);
-        canJump = true;
-        
-        // Optional: Add landing effects
-        // Play footstep sound
-        // Create dust particle effect
-    }
-    
-    // Called by jump takeoff animation
-    public void OnJumpStart()
-    {
-        Debug.Log("Player jumped");
-        canJump = false;
-    }
-    
-    // Called by attack animation when weapon should hit
-    public void OnAttackHit()
-    {
-        Debug.Log("Attack hit frame!");
-        // Add damage detection here
-    }
-    
-    // Called by attack animation when it's finished
-    public void OnAttackEnd()
-    {
-        Debug.Log("Attack finished");
-        // Reset attack state if needed
-    }
-    
-    // Called by dash animation
-    public void OnDashStart()
-    {
-        Debug.Log("Dash started");
-        // Add dash effects (trail, particles, sound)
-    }
-    
-    // Called by dash animation when finished
-    public void OnDashEnd()
-    {
-        Debug.Log("Dash ended");
-    }
-    
-    // Called by footstep animations
-    public void OnFootstep()
-    {
-        // Play footstep sound
-        Debug.Log("Footstep");
+        _moveInput = context.ReadValue<Vector2>();
+        Debug.Log($"Raw Input Vector: {_moveInput}");
     }
 
-    // ========== INPUT HANDLERS ==========
-
+  
     public void OnAttack(InputAction.CallbackContext context)
     {
-        if (isGrounded && !isDashing)
+        if (context.performed && _isGrounded && !_isDashing)
         {
+            if (Time.time - _lastAttackTime > comboResetTime)
+            {
+                _comboStep = 0;
+            }
+            
+            anim.SetInteger("AttackIndex", _comboStep);
             anim.SetTrigger("Attack");
-            Debug.Log("Attack triggered");
+
+      
+            _lastAttackTime = Time.time;
+            
+            _comboStep++;
+            if (_comboStep > 1)
+            {
+                _comboStep = 0;
+            }
         }
     }
+
 
     public void OnJump(InputAction.CallbackContext context)
     {
-        if (isGrounded && !isDashing && canJump)
+        if (context.performed && _isGrounded && !_isDashing && _canJump)
         {
-            isJumping = true;
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * Physics.gravity.y);
-            anim.SetBool("Grounded", false);
-            anim.SetBool("FreeFall", false);
+            _isJumping = true;
+            _velocity.y = Mathf.Sqrt(jumpHeight * -3f * Physics.gravity.y);
             anim.SetTrigger("Jump");
-            groundedTimer = 0;
+            _groundedTimer = 0;
         }
     }
 
+
     public void OnDash(InputAction.CallbackContext context)
     {
-        if (isGrounded && canDash && !isDashing && moveInput != Vector2.zero)
+        if (context.performed && _isGrounded && _canDash && !_isDashing)
         {
-            isDashing = true;
-            canDash = false;
-            dashTimeLeft = dashDuration;
-            dashCooldownLeft = dashCooldown;
+            _isDashing = true;
+            _canDash = false;
+            _dashTimeLeft = dashDuration;
+            _dashCooldownLeft = dashCooldown;
             anim.SetTrigger("Dash");
         }
     }
 
-    public void OnSprintStart(InputAction.CallbackContext context)
+
+    public void OnSprint(InputAction.CallbackContext context)
     {
-        if (isGrounded && !isDashing && moveInput != Vector2.zero)
-            isSprinting = true;
+        if (context.performed) _isSprinting = true;
+        else if (context.canceled) _isSprinting = false;
     }
 
-    public void OnSprintEnd(InputAction.CallbackContext context)
-    {
-        isSprinting = false;
-    }
 
-    // ========== MOVEMENT METHODS ==========
+
+    public void OnLand()
+    {
+        _canJump = true;
+    }
+    
+
+    public void OnAttackHit()
+    {
+        
+        if (_meleeAttack != null)
+        {
+            _meleeAttack.PerformHitDetection();
+        }
+    }
+    
 
     private void HandleMovement()
     {
-        moveDirection = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
-        currentSpeed = (isSprinting && !isDashing && moveInput != Vector2.zero && isGrounded) ? sprintSpeed : walkSpeed;
+        _moveDirection = new Vector3(_moveInput.x, 0f, _moveInput.y).normalized;
+
+        bool isMovingOnGround = _moveInput != Vector2.zero && _isGrounded && !_isDashing;
+        bool isActuallySprinting = _isSprinting && isMovingOnGround;
+
+        _currentSpeed = isActuallySprinting ? _sprintSpeed : _walkSpeed;
+
+
+        float animationSpeedParam = isMovingOnGround ? _currentSpeed : 0f;
+    
+        anim.SetFloat("Speed", animationSpeedParam);
     }
 
     private void HandleJump()
     {
-        if (isJumping && velocity.y <= 0)
-        {
-            isJumping = false;
-        }
+        if (_isJumping && _velocity.y <= 0) _isJumping = false;
     }
 
     private void HandleSprint()
     {
-        if (moveInput == Vector2.zero || !isGrounded) isSprinting = false;
-        anim.SetBool("isSprinting", isSprinting && isGrounded && !isDashing && moveInput != Vector2.zero);
+        if (_moveInput == Vector2.zero) 
+        {
+            _isSprinting = false;
+        }
     }
 
     private void HandleDash()
     {
-        if (dashTimeLeft > 0)
+        if (_dashTimeLeft > 0)
         {
-            Vector3 dashDirection = moveDirection != Vector3.zero ? moveDirection : transform.forward;
-            controller.Move(dashDirection * dashSpeed * Time.deltaTime);
-            dashTimeLeft -= Time.deltaTime;
+            Vector3 dashDirection = transform.forward;
+            
+            _controller.Move(dashDirection * (dashSpeed * Time.deltaTime));
+            _dashTimeLeft -= Time.deltaTime;
         }
         else
         {
-            isDashing = false;
+            _isDashing = false;
         }
     }
 
     private void ApplyGravity()
     {
-        if (!isDashing && !controller.isGrounded)
-            velocity.y += Physics.gravity.y * Time.deltaTime;
+        if (!_isDashing && !_controller.isGrounded)
+            _velocity.y += Physics.gravity.y * Time.deltaTime;
     }
 
+    // ReSharper disable Unity.PerformanceAnalysis
     private void MovePlayer()
     {
-        if (!isDashing)
+        if (!_isDashing)
         {
-            Vector3 move = moveDirection * currentSpeed;
-            move.y = velocity.y;
-            controller.Move(move * Time.deltaTime);
-        }
-        
-        if (moveDirection != Vector3.zero && !isDashing)
-        {
-            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
+            var move = _moveDirection * _currentSpeed;
+            move.y = _velocity.y;
+            RotateTowardsMouse();
+            _controller.Move(move * Time.deltaTime);
         }
     }
+    
 
-    private void UpdateAnimations()
-    {
-        float speedPercent = 0;
-        if (!isDashing && moveInput != Vector2.zero)
-            speedPercent = (isSprinting && isGrounded) ? 1f : 0.5f;
-        
-        anim.SetFloat("Speed", speedPercent);
-        anim.SetFloat("MotionSpeed", isSprinting ? 1.5f : 1f);
-    }
-
-    void OnDrawGizmosSelected()
+    private void OnDrawGizmosSelected()
     {
         if (groundCheck != null)
         {
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(groundCheck.position, groundDistance);
         }
-        
-        if (controller != null)
+
+        if (_controller != null)
         {
             Gizmos.color = Color.blue;
-            Gizmos.DrawRay(transform.position, Vector3.down * (controller.height/2 + 0.1f));
+            Gizmos.DrawRay(transform.position, Vector3.down * (_controller.height / 2 + 0.1f));
+        }
+    }
+
+    private void RotateTowardsMouse()
+    {
+        if (Camera.main != null)
+        {
+            var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+
+            if (Physics.Raycast(ray, out hit, 100f))
+            {
+                var targetPoint = hit.point;
+                var lookDirection = targetPoint - transform.position;
+                lookDirection.y = 0f;
+
+                if (lookDirection != Vector3.zero)
+                {
+                    var targetRotation = Quaternion.LookRotation(lookDirection);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 20f);
+                }
+            }
         }
     }
 }

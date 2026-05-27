@@ -1,13 +1,16 @@
+using System;
 using UnityEngine;
 using UnityEngine.AI;
 
 public class SkellyAI : MonoBehaviour 
 {
     public Transform player;
+    public float aggroRange = 15f;   // <-- NEW: How far away the skeleton can notice the player
     public float stopDistance = 4f;
 
     public float attackCooldown = 2.0f;
     private float nextAttackTime = 0;
+    public event Action OnTargetDestroyed;
     
     private NavMeshAgent agent;
     private Animator anim;
@@ -37,6 +40,7 @@ public class SkellyAI : MonoBehaviour
 
         float distance = Vector3.Distance(transform.position, player.position);
 
+        // State 1: Player is close enough to attack
         if (distance <= stopDistance) {
             agent.isStopped = true;
             agent.velocity = Vector3.zero;
@@ -51,11 +55,18 @@ public class SkellyAI : MonoBehaviour
                 nextAttackTime = Time.time + attackCooldown;
             }
         } 
-        else {
+        // State 2: Player is out of attack range, but inside aggro range (CHASE)
+        else if (distance <= aggroRange) {
             agent.isStopped = false;
             agent.SetDestination(player.position);
             
             anim.SetFloat("Speed", agent.velocity.magnitude);
+        }
+        // State 3: Player is too far away (IDLE)
+        else {
+            agent.isStopped = true;
+            agent.velocity = Vector3.zero;
+            anim.SetFloat("Speed", 0);
         }
     }
 
@@ -94,7 +105,7 @@ public class SkellyAI : MonoBehaviour
         }
 
         TriggerLootDrop();
-
+        OnTargetDestroyed?.Invoke();
         Destroy(gameObject, 5f);
     }
 
@@ -106,5 +117,15 @@ public class SkellyAI : MonoBehaviour
     private void CallDropLoot()
     {
         health.DropLoot();
+    }
+
+    // Helper to visualize the ranges in the Unity Editor Scene view
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, stopDistance); // Attack Range
+
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, aggroRange);   // Aggro Range
     }
 }
