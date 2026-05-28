@@ -1,15 +1,17 @@
 using System;
 using UnityEngine;
 using UnityEngine.AI;
+using Unity.Netcode; // CRITICAL: Added for Netcode for GameObjects
 
-public class SkellyAI : MonoBehaviour 
+public class SkellyAI : NetworkBehaviour // Changed from MonoBehaviour
 {
-    public Transform player;
-    public float aggroRange = 15f;   // <-- NEW: How far away the skeleton can notice the player
+    // Removed the public Transform player slot since it's evaluated dynamically now
+    [HideInInspector] public Transform player; 
+    public float aggroRange = 15f;   
     public float stopDistance = 4f;
 
     public float attackCooldown = 2.0f;
-    private float nextAttackTime = 0;
+    private float _nextAttackTime = 0;
     public event Action OnTargetDestroyed;
     
     private NavMeshAgent agent;
@@ -36,7 +38,18 @@ public class SkellyAI : MonoBehaviour
     }
 
     void Update() {
+        // 1. Netcode Guard: Only the Server/Host should calculate AI state transitions and movement
+        if (!IsServer) return;
         if (isDead) return;
+
+        // 2. Dynamic Target Acquisition: Find the absolute closest network player
+        FindClosestNetworkPlayer();
+
+        // 3. If no players are spawned or alive anywhere on the server, default to Idle
+        if (!player) {
+            GoIdle();
+            return;
+        }
 
         float distance = Vector3.Distance(transform.position, player.position);
 
@@ -50,9 +63,9 @@ public class SkellyAI : MonoBehaviour
 
             anim.SetFloat("Speed", 0);
 
-            if (Time.time >= nextAttackTime) {
+            if (Time.time >= _nextAttackTime) {
                 Attack();
-                nextAttackTime = Time.time + attackCooldown;
+                _nextAttackTime = Time.time + attackCooldown;
             }
         } 
         // State 2: Player is out of attack range, but inside aggro range (CHASE)
@@ -64,10 +77,47 @@ public class SkellyAI : MonoBehaviour
         }
         // State 3: Player is too far away (IDLE)
         else {
+            GoIdle();
+        }
+    }
+
+
+    private void FindClosestNetworkPlayer()
+    {
+        if (!NetworkManager.Singleton) return;
+
+        var connectedClients = NetworkManager.Singleton.ConnectedClientsList;
+        Transform closestTransform = null;
+        float shortestDistance = Mathf.Infinity;
+        Vector3 currentPosition = transform.position;
+
+        foreach (var client in connectedClients)
+        {
+            // Skip clients that haven't instantiated their player prefab yet
+            if (client.PlayerObject == null) continue;
+
+            Transform playerTransform = client.PlayerObject.transform;
+            float distanceToPlayer = Vector3.Distance(currentPosition, playerTransform.position);
+
+            if (distanceToPlayer < shortestDistance)
+            {
+                shortestDistance = distanceToPlayer;
+                closestTransform = playerTransform;
+            }
+        }
+
+        // Set the active player focus target
+        player = closestTransform;
+    }
+
+    private void GoIdle()
+    {
+        if (agent != null && agent.enabled)
+        {
             agent.isStopped = true;
             agent.velocity = Vector3.zero;
-            anim.SetFloat("Speed", 0);
         }
+        anim.SetFloat("Speed", 0);
     }
 
     void Attack()
@@ -119,7 +169,6 @@ public class SkellyAI : MonoBehaviour
         health.DropLoot();
     }
 
-    // Helper to visualize the ranges in the Unity Editor Scene view
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.red;

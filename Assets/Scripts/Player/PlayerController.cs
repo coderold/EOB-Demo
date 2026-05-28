@@ -1,7 +1,9 @@
+using Unity.Cinemachine;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class PlayerController : MonoBehaviour
+public class PlayerController : NetworkBehaviour
 {
     public Animator anim;
     private Vector3 _velocity;
@@ -10,6 +12,8 @@ public class PlayerController : MonoBehaviour
     [Header("Required Components")] 
     private CharacterController _controller;
     private MeleeAttack _meleeAttack;
+    [SerializeField] private PlayerInput playerInput;
+    private CinemachineCamera _localVCam;
     
     [Header("Attack Settings")]
     private int _comboStep = 0;
@@ -56,13 +60,41 @@ public class PlayerController : MonoBehaviour
             _controller = gameObject.AddComponent<CharacterController>();
             _controller.height = 2f;
             _controller.radius = 0.5f;
-            _controller.center = new Vector3(0, 1f, 0);
         }
         
+    }
+    
+    public override void OnNetworkSpawn()
+    {
+        _localVCam = GetComponentInChildren<CinemachineCamera>();
+        
+        if (IsOwner)
+        {
+            if (_localVCam != null)
+            {
+                _localVCam.Target.TrackingTarget = transform;
+                _localVCam.Follow = transform;
+                _localVCam.LookAt = transform;
+
+          
+                _localVCam.Priority = 10; 
+            }
+        }
+        else
+        {
+          
+            if (_localVCam != null)
+            {
+                _localVCam.gameObject.SetActive(false);
+            }
+            
+            enabled = false;
+        }
     }
 
     private void Update()
     {
+        if (!IsOwner) return;
 
         if (_isDashing)
         {
@@ -118,7 +150,6 @@ public class PlayerController : MonoBehaviour
     public void OnMove(InputAction.CallbackContext context)
     {
         _moveInput = context.ReadValue<Vector2>();
-        Debug.Log($"Raw Input Vector: {_moveInput}");
     }
 
   
@@ -137,11 +168,6 @@ public class PlayerController : MonoBehaviour
       
             _lastAttackTime = Time.time;
             
-            _comboStep++;
-            if (_comboStep > 1)
-            {
-                _comboStep = 0;
-            }
         }
     }
 
@@ -187,11 +213,22 @@ public class PlayerController : MonoBehaviour
 
     public void OnAttackHit()
     {
-        
+    
         if (_meleeAttack != null)
         {
             _meleeAttack.PerformHitDetection();
         }
+    }
+
+    public void OnAttackEnd()
+    {
+        _comboStep++;
+        
+        if (_comboStep > 1)
+        {
+            _comboStep = 0;
+        }
+        
     }
     
 
@@ -274,23 +311,25 @@ public class PlayerController : MonoBehaviour
 
     private void RotateTowardsMouse()
     {
-        if (Camera.main != null)
-        {
-            var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            RaycastHit hit;
+        if (!IsOwner) return;
 
-            if (Physics.Raycast(ray, out hit, 100f))
-            {
-                var targetPoint = hit.point;
-                var lookDirection = targetPoint - transform.position;
-                lookDirection.y = 0f;
+if (Camera.main != null)
+{
+    Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        
 
-                if (lookDirection != Vector3.zero)
-                {
-                    var targetRotation = Quaternion.LookRotation(lookDirection);
-                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 20f);
-                }
-            }
-        }
+    Plane groundPlane = new Plane(Vector3.up, transform.position);
+
+
+    if (groundPlane.Raycast(ray, out float rayDistance))
+    {
+        Vector3 targetPoint = ray.GetPoint(rayDistance);
+
+    
+        Vector3 lookDirection = new Vector3(targetPoint.x, transform.position.y, targetPoint.z);
+        
+        transform.LookAt(lookDirection);
     }
 }
+    }
+    }

@@ -10,7 +10,6 @@ GameObject:
   m_Component:
   - component: {fileID: 2070925441746177912}
   - component: {fileID: 1318867023023520111}
-  - component: {fileID: 6007723187672105810}
   - component: {fileID: 7024346515262906609}
   m_Layer: 0
   m_Name: PlayerFollowCamera
@@ -77,32 +76,6 @@ MonoBehaviour:
       BarrelClipping: 0.25
       Anamorphism: 0
   BlendHint: 0
---- !u!114 &6007723187672105810
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2070925441746177671}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 625c14eee3ad46c99df7c7c891ef668a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Damping: {x: 0.1, y: 0.25, z: 0.3}
-  ShoulderOffset: {x: 1, y: 0, z: 0}
-  VerticalArmLength: 0
-  CameraSide: 0.6
-  CameraDistance: 4
-  AvoidObstacles:
-    Enabled: 1
-    CollisionFilter:
-      serializedVersion: 2
-      m_Bits: 1
-    IgnoreTag: Player
-    CameraRadius: 0.15
-    DampingIntoCollision: 0
-    DampingFromCollision: 0
 --- !u!114 &7024346515262906609
 MonoBehaviour:
   m_ObjectHideFlags: 0
