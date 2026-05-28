@@ -10,7 +10,6 @@ public class WorldSpaceHealthBar : MonoBehaviour
 
     private void Start()
     {
-        // Cache the camera transform for efficiency
         if (Camera.main != null)
         {
             _mainCameraTransform = Camera.main.transform;
@@ -21,7 +20,6 @@ public class WorldSpaceHealthBar : MonoBehaviour
     {
         if (_mainCameraTransform == null) return;
 
-        // Force the canvas plane to lock completely flat facing the camera lens vector
         transform.forward = _mainCameraTransform.forward;
     }
 
