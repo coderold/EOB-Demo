@@ -2734,14 +2734,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   anim: {fileID: 946158623}
-  walkSpeed: 2
-  sprintSpeed: 4
+  comboResetTime: 1.5
   groundCheck: {fileID: 0}
   groundDistance: 0.2
   groundMask:
     serializedVersion: 2
     m_Bits: 0
-  jumpHeight: 2
+  jumpHeight: 0.12
   dashSpeed: 15
   dashDuration: 0.2
   dashCooldown: 1
@@ -6795,11 +6794,11 @@ SceneRoots:
   - {fileID: 411542565}
   - {fileID: 1046006035}
   - {fileID: 1037939247645516431}
-  - {fileID: 1283975654}
-  - {fileID: 739536451}
   - {fileID: 6534983655819654802}
-  - {fileID: 2100075728}
-  - {fileID: 1884595942}
   - {fileID: 1571005332}
   - {fileID: 1693675121}
   - {fileID: 2127815863}
+  - {fileID: 1884595942}
+  - {fileID: 1283975654}
+  - {fileID: 739536451}
+  - {fileID: 2100075728}
